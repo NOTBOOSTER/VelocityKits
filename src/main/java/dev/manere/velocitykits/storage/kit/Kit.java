@@ -6,10 +6,15 @@ import dev.manere.utils.serializers.Serializers;
 import dev.manere.utils.sql.connection.SQLConnector;
 import dev.manere.utils.sql.enums.PrimaryColumn;
 import dev.manere.utils.text.color.TextStyle;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,16 +24,27 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class Kit {
-    public static Connection connection;
+    private static Connection connection;
+    private static File yamlFile;
+    private static FileConfiguration yamlConfig;
 
-    public static void of() {
+    public static void initialize(Plugin plugin) {
+        String storageType = plugin.getConfig().getString("storage.type", "yaml");
+        if ("mysql".equals(storageType)) {
+            setupSQL(plugin);
+        } else {
+            setupYAML(plugin);
+        }
+    }
+
+    private static void setupSQL(Plugin plugin) {
         connection = SQLConnector.of()
                 .authentication()
-                .host(Utils.plugin().getConfig().getString("sql.host"))
-                .port(Utils.plugin().getConfig().getInt("sql.port"))
-                .username(Utils.plugin().getConfig().getString("sql.username"))
-                .password(Utils.plugin().getConfig().getString("sql.password"))
-                .database(Utils.plugin().getConfig().getString("sql.database"))
+                .host(plugin.getConfig().getString("sql.host"))
+                .port(plugin.getConfig().getInt("sql.port"))
+                .username(plugin.getConfig().getString("sql.username"))
+                .password(plugin.getConfig().getString("sql.password"))
+                .database(plugin.getConfig().getString("sql.database"))
                 .build()
                 .connect();
 
@@ -46,19 +62,102 @@ public class Kit {
         }
     }
 
-    public static void delete(String playerUUID, int kitNumber) {
-        try {
-            try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM velocity_kits WHERE player_uuid = ? AND kit_number = ?")) {
-                stmt.setString(1, playerUUID);
-                stmt.setInt(2, kitNumber);
-                stmt.executeUpdate();
+    private static void setupYAML(Plugin plugin) {
+        yamlFile = new File(plugin.getDataFolder(), "kits.yml");
+        if (!yamlFile.exists()) {
+            try {
+                yamlFile.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException("Could not create kits YAML file.", e);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException();
+        }
+        yamlConfig = YamlConfiguration.loadConfiguration(yamlFile);
+    }
+
+    public static void delete(String playerUUID, int kitNumber) {
+        String storageType = Utils.plugin().getConfig().getString("storage.type", "yaml");
+        if ("mysql".equals(storageType)) {
+            deleteSQL(playerUUID, kitNumber);
+        } else {
+            deleteYAML(playerUUID, kitNumber);
         }
     }
 
-    public static void contentsAsync(Player player, int kitNumber, Consumer<Map<Integer, ItemStack>> callback) {
+    private static void deleteSQL(String playerUUID, int kitNumber) {
+        try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM velocity_kits WHERE player_uuid = ? AND kit_number = ?")) {
+            stmt.setString(1, playerUUID);
+            stmt.setInt(2, kitNumber);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete kit from SQL database.", e);
+        }
+    }
+
+    private static void deleteYAML(String playerUUID, int kitNumber) {
+        String path = playerUUID + "." + kitNumber;
+        yamlConfig.set(path, null);
+        try {
+            yamlConfig.save(yamlFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete kit from YAML file.", e);
+        }
+    }
+
+    public static void load(Player player, int kitNumber) {
+        contentsAsync(player, kitNumber, contents -> {
+            Inventory inventory = player.getInventory();
+            inventory.clear();
+
+            if (contents.isEmpty()) {
+                player.sendActionBar(TextStyle.color("<#ff0000>That kit is empty!"));
+                return;
+            }
+
+            player.sendActionBar(TextStyle.color("<#00ff00>Kit " + kitNumber + " has been loaded."));
+            for (Map.Entry<Integer, ItemStack> entry : contents.entrySet()) {
+                inventory.setItem(entry.getKey(), entry.getValue());
+            }
+        });
+    }
+
+    public static void saveAsync(Player player, int kitNumber, Map<Integer, ItemStack> contents) {
+        String playerUUID = player.getUniqueId().toString();
+        Schedulers.async().execute(() -> save(playerUUID, kitNumber, contents));
+    }
+
+    public static void save(String playerUUID, int kitNumber, Map<Integer, ItemStack> contents) {
+        String storageType = Utils.plugin().getConfig().getString("storage.type", "yaml");
+        if ("mysql".equals(storageType)) {
+            saveSQL(playerUUID, kitNumber, contents);
+        } else {
+            saveYAML(playerUUID, kitNumber, contents);
+        }
+    }
+
+    private static void saveSQL(String playerUUID, int kitNumber, Map<Integer, ItemStack> contents) {
+        String data = Serializers.base64().serializeItemStacks(contents);
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "REPLACE INTO velocity_kits (player_uuid, kit_number, contents) VALUES (?, ?, ?)")) {
+            stmt.setString(1, playerUUID);
+            stmt.setInt(2, kitNumber);
+            stmt.setString(3, data);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to save kit to SQL database.", e);
+        }
+    }
+
+    private static void saveYAML(String playerUUID, int kitNumber, Map<Integer, ItemStack> contents) {
+        String path = playerUUID + "." + kitNumber;
+        yamlConfig.set(path, contents);
+        try {
+            yamlConfig.save(yamlFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save kit to YAML file.", e);
+        }
+    }
+
+    private static void contentsAsync(Player player, int kitNumber, Consumer<Map<Integer, ItemStack>> callback) {
         Schedulers.async().execute(() -> {
             Map<Integer, ItemStack> kitContents = contents(player.getUniqueId().toString(), kitNumber);
             Schedulers.sync().execute(() -> callback.accept(kitContents));
@@ -72,7 +171,7 @@ public class Kit {
         });
     }
 
-    public static Map<Integer, ItemStack> contents(String playerUUID, int kitNumber) {
+    private static Map<Integer, ItemStack> contents(String playerUUID, int kitNumber) {
         ResultSet rs = null;
         try {
             try (PreparedStatement stmt = connection.prepareStatement("SELECT contents FROM velocity_kits WHERE player_uuid = ? AND kit_number = ?")) {
@@ -87,69 +186,17 @@ public class Kit {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException();
+            throw new RuntimeException("Failed to retrieve kit contents from database.", e);
         } finally {
             if (rs != null) {
                 try {
                     rs.close();
                 } catch (SQLException e) {
-                    //noinspection CallToPrintStackTrace
                     e.printStackTrace();
                 }
             }
         }
         return new HashMap<>();
-    }
-
-    public static void load(Player player, int kitNumber) {
-        Inventory inventory = player.getInventory();
-
-        contentsAsync(player, kitNumber, contents -> {
-            if (contents.isEmpty()) {
-                player.sendActionBar(TextStyle.color("<#ff0000>That kit is empty!"));
-                return;
-            }
-
-            player.sendActionBar(TextStyle.color("<#00ff00>Kit <number> has been loaded."
-                    .replaceAll("<number>", String.valueOf(kitNumber))));
-
-            for (Map.Entry<Integer, ItemStack> entry : contents.entrySet()) {
-                int slot = entry.getKey();
-                ItemStack item = entry.getValue();
-
-                if (slot >= 0 && slot < inventory.getSize()) {
-                    inventory.setItem(slot, item);
-                } else {
-                    return;
-                }
-            }
-        });
-    }
-
-    public static void saveAsync(Player player, int kitNumber, Map<Integer, ItemStack> contents) {
-        Schedulers.async().execute(task -> save(String.valueOf(player.getUniqueId()), kitNumber, contents));
-    }
-
-    public static void save(String playerUUID, int kitNumber, Map<Integer, ItemStack> contents) {
-        try {
-            String data = Serializers.base64().serializeItemStacks(contents);
-
-            try (PreparedStatement stmt = connection.prepareStatement(
-                    "INSERT INTO velocity_kits " +
-                            "(player_uuid, kit_number, contents) " +
-                            "VALUES (?, ?, ?) " +
-                            "ON DUPLICATE KEY UPDATE " +
-                            "contents = ?")) {
-
-                stmt.setString(1, playerUUID);
-                stmt.setInt(2, kitNumber);
-                stmt.setString(3, data);
-                stmt.setString(4, data);
-                stmt.executeUpdate();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static void close() {
@@ -158,7 +205,7 @@ public class Kit {
                 connection.close();
             }
         } catch (SQLException e) {
-            throw new RuntimeException();
+            throw new RuntimeException("Error closing SQL connection.", e);
         }
     }
 }

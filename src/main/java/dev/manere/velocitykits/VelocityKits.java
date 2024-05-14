@@ -33,7 +33,7 @@ public final class VelocityKits extends JavaPlugin {
 
         KitRoom.of();
         PremadeKit.of();
-        Kit.of();
+        Kit.initialize(this);
     }
 
     @Override
