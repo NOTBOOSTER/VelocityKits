@@ -4,3 +4,7 @@ sql:
   username: 'root'
   password: 'thisisatest'
   database: 'velocity'
+
+# use 'yaml' for yml 
+# use "mysql" for sql
+database: 'yaml'  # use 'mysql' or 'yaml'
