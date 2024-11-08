@@ -48,6 +48,7 @@ public class KitRoomAdminMenu implements Menu<dev.manere.utils.menu.normal.Menu>
             }
         });
 
+
         List<Component> helpLore = new ArrayList<>();
         helpLore.add(TextStyle.color(" <white>Please drag in any items that "));
         helpLore.add(TextStyle.color(" <white>you want to add to the "));

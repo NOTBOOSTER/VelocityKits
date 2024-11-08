@@ -39,7 +39,7 @@ public class KitEditorMenu implements dev.manere.velocitykits.menu.Menu<Menu>, L
         }), 1);
 
         List<Integer> border = new ArrayList<>(List.of(
-                45, 46, 47, 48, 49, 50, 51, 52, 53
+                46, 47, 48, 49, 50, 51, 52, 53
         ));
 
         border.forEach(slot -> {
@@ -50,6 +50,37 @@ public class KitEditorMenu implements dev.manere.velocitykits.menu.Menu<Menu>, L
                         .onClick(event -> event.setCancelled(true)));
             }
         });
+
+        List<Integer> armorAndHand = new ArrayList<>(List.of(
+                41, 42, 43, 44
+        ));
+
+        armorAndHand.forEach(slot -> {
+            if (this.menuBuilder.button(slot) == null) {
+                button(slot, Button.button()
+                        .item(ItemBuilder.item(Material.BLACK_STAINED_GLASS_PANE)
+                                .name(TextStyle.color(" <#579af7>← ARMOR + OFFHAND")))
+                        .onClick(event -> event.setCancelled(true)));
+            }
+        });
+
+        button(45, Button.button()
+                .item(ItemBuilder.item(Material.OAK_DOOR)
+                        .name(TextStyle.color("<red>Exit")))
+                .onClick(event -> {
+                    event.setCancelled(true);
+
+                    player.performCommand("k");
+                }));
+
+        button(53, Button.button()
+                .item(ItemBuilder.item(Material.BARRIER)
+                        .name(TextStyle.color("<#579af7>Close Menu")))
+                .onClick(event -> {
+                    event.setCancelled(true);
+
+                    player.closeInventory();
+                }));
 
         button(48, Button.button()
                 .item(ItemBuilder.item(Material.RED_DYE)

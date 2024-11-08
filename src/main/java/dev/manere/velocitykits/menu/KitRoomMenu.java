@@ -47,7 +47,7 @@ public class KitRoomMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
             });
         }
 
-        List<Integer> border = new ArrayList<>(List.of(45, 53));
+        List<Integer> border = new ArrayList<>(List.of(46, 52, 53));
 
         border.forEach(slot -> {
             if (this.menuBuilder.button(slot) == null) {
@@ -57,6 +57,39 @@ public class KitRoomMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
                         .onClick(event -> event.setCancelled(true)));
             }
         });
+
+        button(45, Button.button()
+                .item(ItemBuilder.item(Material.OAK_DOOR)
+                        .name(TextStyle.color("<red>Exit")))
+                .onClick(event -> {
+                    event.setCancelled(true);
+
+                    Player player = (Player) event.getWhoClicked();
+
+                    player.performCommand("k");
+                }));
+
+        button(53, Button.button()
+                .item(ItemBuilder.item(Material.BARRIER)
+                        .name(TextStyle.color("<#579af7>Close Menu")))
+                .onClick(event -> {
+                    event.setCancelled(true);
+
+                    Player player = (Player) event.getWhoClicked();
+
+                    player.closeInventory();
+                }));
+
+//        button(53, Button.button()
+//                .item(ItemBuilder.item(Material.WRITABLE_BOOK)
+//                 .onClick(event -> {
+//                       .name(TextStyle.color(" <green>Refill")))
+//                    event.setCancelled(true);
+//
+//                    Player player = (Player) event.getWhoClicked();
+//
+//                    new KitRoomMenu(category);
+//                }));
 
         Arrays.stream(KitRoomCategory.values()).forEach(categoryItem -> button(categoryItem.slot(), Button.button()
                 .item(ItemBuilder.item(categoryItem.type())

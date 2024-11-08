@@ -32,7 +32,7 @@ public class MainMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
         kit(34, "<#579af7>Kit 8", "<#91bdfa>/k8, /kit8", 8);
 
         List<Integer> border = new ArrayList<>(List.of(
-                45, 46, 47, 48, 49, 50, 51, 52, 53
+                0, 1, 2, 3, 4, 5, 6 , 7, 8, 9, 17, 18, 20, 22, 24, 26, 27, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44
         ));
 
         border.forEach(slot -> {
@@ -43,6 +43,33 @@ public class MainMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
                         .onClick(event -> event.setCancelled(true)));
             }
         });
+
+        List<Integer> redGlass = new ArrayList<>(List.of(
+                11, 13, 15, 19, 21, 23, 25, 29, 31, 33
+        ));
+
+        redGlass.forEach(slot -> {
+            if (this.menuBuilder.button(slot) == null) {
+                button(slot, Button.button()
+                        .item(ItemBuilder.item(Material.RED_STAINED_GLASS_PANE)
+                                .name(TextStyle.color(" ")))
+                        .onClick(event -> event.setCancelled(true)));
+            }
+        });
+
+        List<Integer> grayGlass = new ArrayList<>(List.of(
+                45, 46, 47, 48, 49, 50, 51, 52, 53
+        ));
+
+        grayGlass.forEach(slot -> {
+            if (this.menuBuilder.button(slot) == null) {
+                button(slot, Button.button()
+                        .item(ItemBuilder.item(Material.GRAY_STAINED_GLASS_PANE)
+                                .name(TextStyle.color(" ")))
+                        .onClick(event -> event.setCancelled(true)));
+            }
+        });
+
 
         List<Component> virtualKitRoomLore = new ArrayList<>();
         virtualKitRoomLore.add(TextStyle.color(" <white>Opens a menu with "));
@@ -57,7 +84,7 @@ public class MainMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
         helpLore.add(TextStyle.color(" <white>(which represents a kit), and then click "));
         helpLore.add(TextStyle.color(" <white>'Import Inventory' and finally close out "));
         helpLore.add(TextStyle.color(" <white>of your inventory to save it. "));
-        helpLore.add(TextStyle.color(""));
+        helpLore.add(TextStyle.color(" "));
         helpLore.add(TextStyle.color("<#91bdfa>Join our discord (/discord)"));
         helpLore.add(TextStyle.color("<#91bdfa>if you find any issues."));
 
@@ -93,12 +120,6 @@ public class MainMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
                 .onClick(event -> event.setCancelled(true)));
 
         button(51, Button.button()
-                .item(ItemBuilder.item(Material.ENDER_CHEST)
-                        .name(TextStyle.color("<#579af7>Ender Chest Kits"))
-                        .lore(TextStyle.color(" <white>SOON...?")))
-                .onClick(event -> event.setCancelled(true)));
-
-        button(52, Button.button()
                 .item(ItemBuilder.item(Material.RED_DYE)
                         .name(TextStyle.color("<#579af7>Clear Inventory")))
                 .onClick(event -> {
@@ -108,6 +129,17 @@ public class MainMenu implements Menu<dev.manere.utils.menu.normal.Menu> {
 
                     player.getInventory().clear();
                     player.sendActionBar(TextStyle.color("<#00ff00>Cleared inventory."));
+                }));
+
+        button(52, Button.button()
+                .item(ItemBuilder.item(Material.BARRIER)
+                        .name(TextStyle.color("<#579af7>Close Menu")))
+                .onClick(event -> {
+                    event.setCancelled(true);
+
+                    Player player = (Player) event.getWhoClicked();
+
+                    player.closeInventory();
                 }));
     }
 

@@ -43,10 +43,10 @@ public interface Menu<T extends InventoryHolder> {
 
     default void kit(int slot, String kitName, String commands, int number) {
         button(slot, Button.button()
-                .item(ItemBuilder.item(Material.END_CRYSTAL)
+                .item(ItemBuilder.item(Material.CHEST)
                         .name(TextStyle.color(kitName))
-                        .lore(TextStyle.color(" <white>LMB to load, "),
-                                TextStyle.color(" <white>RMB to edit. "),
+                        .lore(TextStyle.color(" <white>Left Click to load, "),
+                                TextStyle.color(" <white>Right Click to edit. "),
                                 TextStyle.color(" "), TextStyle.color(commands)))
                 .onClick(event -> {
                     Player player = (Player) event.getWhoClicked();
